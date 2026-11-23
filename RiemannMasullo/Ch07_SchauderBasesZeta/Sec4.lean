@@ -2171,45 +2171,36 @@ theorem archRegularizedFiniteHeckeL_apply (s : {s : ℂ // 1 < s.re}) :
 -- lie in the kernel of the printed adjoint to the theta annihilator. Pass to
 -- the relative quotient of the completed ideal by the finite ideal.
 
-/-- A closed subspace is the common kernel of a family whose closed dual span is its annihilator. -/
-private theorem archNuclearityMellin_range_commonKernel
-    (E : Type*) [AddCommGroup E] [Module ℂ E] [TopologicalSpace E]
-    [PolynormableSpace ℂ E]
-    (J : Type*) (D : Submodule ℂ E) (jet : J → StrongDual ℂ E)
-    (hD : IsClosed (D : Set E))
-    (hspan : ((Submodule.span ℂ (Set.range jet)).topologicalClosure :
-        Set (StrongDual ℂ E)) = {ℓ | ∀ x : D, ℓ x.val = 0})
-    (x : E) : x ∈ D ↔ ∀ j, jet j x = 0 := by
-  let : Module ℝ E := Module.restrictScalars ℝ ℂ E
-  let : IsScalarTower ℝ ℂ E := IsScalarTower.restrictScalars ℝ ℂ E
-  let : IsTopologicalAddGroup E := PolynormableSpace.isTopologicalAddGroup ℂ E
-  let : ContinuousSMul ℂ E := PolynormableSpace.continuousSMul ℂ E
-  let : LocallyConvexSpace ℝ E := (PolynormableSpace.withSeminorms ℂ E).toLocallyConvexSpace
-  constructor
-  · intro hx j
-    have hj : jet j ∈ (Submodule.span ℂ (Set.range jet)).topologicalClosure :=
-      (Submodule.span ℂ (Set.range jet)).le_topologicalClosure
-        (Submodule.subset_span ⟨j, rfl⟩)
-    change jet j ∈ ((Submodule.span ℂ (Set.range jet)).topologicalClosure :
-      Set (StrongDual ℂ E)) at hj
-    rw [hspan] at hj
-    exact hj ⟨x, hx⟩
-  · intro hx
-    by_contra hnot
-    obtain ⟨ℓ, hℓne, hℓzero⟩ := exists_dual_eq_zero_on_submodule_of_notMem D hD hnot
-    let ev : StrongDual ℂ E →ₗ[ℂ] ℂ :=
-      { toFun := fun f ↦ f x
-        map_add' := fun _ _ ↦ rfl
-        map_smul' := fun _ _ ↦ rfl }
-    have hker : IsClosed (ev.ker : Set (StrongDual ℂ E)) :=
-      isClosed_eq (continuous_eval_const x) continuous_const
-    have hle : Submodule.span ℂ (Set.range jet) ≤ ev.ker :=
-      Submodule.span_le.mpr (by rintro _ ⟨j, rfl⟩; exact hx j)
-    have hℓmem : ℓ ∈ ((Submodule.span ℂ (Set.range jet)).topologicalClosure :
-        Set (StrongDual ℂ E)) := by
-      rw [hspan]
-      exact fun y ↦ hℓzero y.val y.property
-    exact hℓne ((Submodule.span ℂ (Set.range jet)).topologicalClosure_minimal hle hker hℓmem)
+/-- Paper: Equation (7.4.3.13), p. 372.
+Each adjusted jet annihilates the archimedean orbital denominator, so the jets are
+well defined on the quotient by it. -/
+theorem archNuclearityQuotient_jetEquiv_annihilate (j : ArchNuclearityJetIndex χ τ hτ)
+    (x : archNuclearityDenominator χ) :
+    archNuclearityJet χ τ hτ j x.val = 0 := by sorry
+
+/-- Paper: Equation (7.4.3.13), p. 372.
+The adjusted jets assemble into a single continuous linear map from the archimedean
+orbital quotient to the product of the coefficient spaces. -/
+theorem archNuclearityQuotient_jetEquiv_coefficients :
+    ∃ L : ArchNuclearityQuotient χ →L[ℂ] (ArchNuclearityJetIndex χ τ hτ → ℂ),
+      ∀ (x : Θ₀(χ)) (j : ArchNuclearityJetIndex χ τ hτ),
+        L ((archNuclearityDenominator χ).mkQ x) j = archNuclearityJet χ τ hτ j x := by
+  have hker : ∀ j : ArchNuclearityJetIndex χ τ hτ,
+      archNuclearityDenominator χ ≤ (archNuclearityJet χ τ hτ j).ker :=
+    fun j _ hy ↦ archNuclearityQuotient_jetEquiv_annihilate (χ := χ) (τ := τ) (hτ := hτ) j ⟨_, hy⟩
+  refine ⟨ContinuousLinearMap.pi fun j ↦ (archNuclearityDenominator χ).liftQL
+    (archNuclearityJet χ τ hτ j) (hker j), ?_⟩
+  intro x j
+  exact Submodule.liftQ_apply (p := archNuclearityDenominator χ)
+    (f := (archNuclearityJet χ τ hτ j).toLinearMap) (h := hker j) (x := x)
+
+/-- Paper: Equation (7.4.3.13), p. 372.
+The adjusted jets separate the classes of the archimedean orbital quotient: a class
+on which every jet vanishes is the class of a flat test, that is, it lies in the
+denominator. -/
+theorem archNuclearityQuotient_jetEquiv_separating (x : Θ₀(χ))
+    (hx : ∀ j, archNuclearityJet χ τ hτ j x = 0) : x ∈ archNuclearityDenominator χ := by
+  sorry
 
 /-- Entire divisibility is equivalent to the corresponding pointwise inequalities of vanishing orders. -/
 private theorem archNuclearityMellin_range_entire_dvd
@@ -2573,9 +2564,10 @@ theorem archNuclearityMellin_range :
   let : PolynormableSpace ℂ (E) := polynormableSpace_quotient (K)
   have hD (x : E) : x ∈ archNuclearityDenominator χ ↔
       ∀ j : ArchNuclearityJetIndex χ τ hτ, archNuclearityJet χ τ hτ j x = 0 :=
-    archNuclearityMellin_range_commonKernel (E) (ArchNuclearityJetIndex χ τ hτ)
-      (archNuclearityDenominator χ) (archNuclearityJet χ τ hτ)
-      (archNuclearityDenominator_nonzero_closed χ).2 (archNuclearityJet_span χ τ hτ) x
+    ⟨fun hx j ↦ archNuclearityQuotient_jetEquiv_annihilate
+        (χ := χ) (τ := τ) (hτ := hτ) j ⟨x, hx⟩,
+      fun hx ↦ archNuclearityQuotient_jetEquiv_separating
+        (χ := χ) (τ := τ) (hτ := hτ) x hx⟩
   have hjet (x : E) (j : ArchNuclearityJetIndex χ τ hτ) :
       archNuclearityJet χ τ hτ j x =
         iteratedDeriv j.val.2 (Z x).val j.val.1 := by
@@ -2617,37 +2609,6 @@ theorem archNuclearityMellin_range :
       rw [hjet x j, hx]
       exact hjets j.val.1 j.val.2 j.property
   exact ⟨heq, heq.symm ▸ schwartzBergmanDivisible_isClosed H⟩
-
-/-- Paper: Equation (7.4.3.13), p. 372.
-Each adjusted jet annihilates the archimedean orbital denominator, so the jets are
-well defined on the quotient by it. -/
-theorem archNuclearityQuotient_jetEquiv_annihilate (j : ArchNuclearityJetIndex χ τ hτ)
-    (x : archNuclearityDenominator χ) :
-    archNuclearityJet χ τ hτ j x.val = 0 := by sorry
-
-/-- Paper: Equation (7.4.3.13), p. 372.
-The adjusted jets assemble into a single continuous linear map from the archimedean
-orbital quotient to the product of the coefficient spaces. -/
-theorem archNuclearityQuotient_jetEquiv_coefficients :
-    ∃ L : ArchNuclearityQuotient χ →L[ℂ] (ArchNuclearityJetIndex χ τ hτ → ℂ),
-      ∀ (x : Θ₀(χ)) (j : ArchNuclearityJetIndex χ τ hτ),
-        L ((archNuclearityDenominator χ).mkQ x) j = archNuclearityJet χ τ hτ j x := by
-  have hker : ∀ j : ArchNuclearityJetIndex χ τ hτ,
-      archNuclearityDenominator χ ≤ (archNuclearityJet χ τ hτ j).ker :=
-    fun j _ hy ↦ archNuclearityQuotient_jetEquiv_annihilate (χ := χ) (τ := τ) (hτ := hτ) j ⟨_, hy⟩
-  refine ⟨ContinuousLinearMap.pi fun j ↦ (archNuclearityDenominator χ).liftQL
-    (archNuclearityJet χ τ hτ j) (hker j), ?_⟩
-  intro x j
-  exact Submodule.liftQ_apply (p := archNuclearityDenominator χ)
-    (f := (archNuclearityJet χ τ hτ j).toLinearMap) (h := hker j) (x := x)
-
-/-- Paper: Equation (7.4.3.13), p. 372.
-The adjusted jets separate the classes of the archimedean orbital quotient: a class
-on which every jet vanishes is the class of a flat test, that is, it lies in the
-denominator. -/
-theorem archNuclearityQuotient_jetEquiv_separating (x : Θ₀(χ))
-    (hx : ∀ j, archNuclearityJet χ τ hτ j x = 0) : x ∈ archNuclearityDenominator χ := by
-  sorry
 
 /-- Paper: Equation (7.4.3.13), p. 372.
 Every family of coefficient values is realized by a class of the archimedean
